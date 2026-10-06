@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ────────────────────────────────────────── */
+  /* FONDOS (Tonos Océano Profundo / Nocturno)  */
+  /* ────────────────────────────────────────── */
+  /* ACÁ ESTÁ EL CAMBIO: Un azul marino notablemente más claro que el #030b14 anterior */
+  --color-bg: #112a46;          
+  
+  /* Los paneles y tarjetas se mantienen bien oscuros para que destaquen */
+  --color-surface: #0a1628;     
+  --color-surface-hover: #11223b; 
+  --color-border: #1e3a5f;      
+
+  /* ────────────────────────────────────────── */
+  /* TEXTOS (Alta legibilidad para monitoreo)   */
+  /* ────────────────────────────────────────── */
+  --color-text: #e2e8f0;        
+  --color-text-secondary: #94a3b8; 
+  --color-text-muted: #64748b;  
+  --color-text-faint: #334155;  
+
+  /* ────────────────────────────────────────── */
+  /* MARCA / INTERACCIÓN (Azul Océano Sobrio)   */
+  /* ────────────────────────────────────────── */
+  --color-primary: #0ea5e9;     
+  --color-primary-soft: rgba(14, 165, 233, 0.15);
+
+  --color-secondary: #3b82f6;   
+  --color-secondary-soft: rgba(59, 130, 246, 0.15);
+
+  /* ────────────────────────────────────────── */
+  /* ALERTAS                                    */
+  /* ────────────────────────────────────────── */
+  --color-alerta-verde: #10b981;   
+  --color-alerta-amarillo: #f59e0b; 
+  --color-alerta-rojo: #ef4444;    
+
+  /* ────────────────────────────────────────── */
+  /* WARNING PANELS                             */
+  /* ────────────────────────────────────────── */
+  --color-warning-bg: rgba(239, 68, 68, 0.1);
+  --color-warning-border: rgba(239, 68, 68, 0.5);
+  --color-warning-text: #fca5a5;
+
+  /* ────────────────────────────────────────── */
+  /* SOMBRAS                                    */
+  /* ────────────────────────────────────────── */
+  --shadow-primary: rgba(14, 165, 233, 0.2);
+  --shadow-danger: rgba(239, 68, 68, 0.4);
+  --color-danger-soft: rgba(239, 68, 68, 0.15); 
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark; 
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+
+  /* Gradiente ajustado a los nuevos tonos más claros */
+  background: 
+    radial-gradient(
+      circle at 50% 0%, 
+      rgba(20, 60, 100, 0.8), /* Luz un poco más clara arriba */
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 100% 100%, 
+      rgba(14, 165, 233, 0.05), 
+      transparent 40%
+    ),
+    linear-gradient(
+      180deg,
+      #112a46 0%,   /* Fondo superior (azul marino) */
+      #0a192f 100%  /* Fondo inferior (oscuro pero ya no es negro puro) */
+    );
+
+  background-attachment: fixed;
+}
+
+/* Grilla sutil estilo radar ajustada al nuevo color azul océano */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+
+  background-image: 
+    linear-gradient(rgba(14, 165, 233, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px; 
+  
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  
+  z-index: -1;
+}

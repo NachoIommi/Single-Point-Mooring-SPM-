@@ -1,0 +1,185 @@
+// schema.prisma — SPM Monorepo
+// Base de datos: Neon (PostgreSQL)
+// ORM: Prisma
+//
+// NOTA: Los 4 estados canónicos de operación son los del dominio TS:
+//   PLANIFICADA | ENCURSO | DETENIDA | FINALIZADA
+// Si la BD Neon tiene filas con el esquema viejo de 5 estados
+// (PREPARADA, ACTIVA, PAUSADA), deben migrarse antes de usar este schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum EstadoOperacion {
+  PLANIFICADA
+  ENCURSO
+  DETENIDA
+  FINALIZADA
+}
+
+enum EstadoMonoboya {
+  OCUPADA
+  DISPONIBLE
+  DESHABILITADA
+}
+
+enum TipoSensor {
+  TENSION
+  PRESION
+  OLEAJE
+  ORIENTACION
+  CORRIENTE
+  CAUDAL
+  VIENTO
+  AMARRE
+}
+
+enum OrigenMedicion {
+  MONOBOYA
+  BUQUE
+}
+
+enum TipoAlerta {
+  VERDE
+  AMARILLA
+  ROJA
+}
+
+enum RolUsuario {
+  ADMIN
+  OPERADOR_BUQUE
+  OPERADOR_LANCHA
+  OPERADOR_PLANTA
+}
+
+// ─── Modelos ─────────────────────────────────────────────────────────────────
+
+model Usuario {
+  id              Int           @id @default(autoincrement())
+  nombre          String
+  email           String        @unique
+  dni             Int           @unique
+  contrasena      String
+  rol             RolUsuario
+  plantaId        Int?
+  planta          Planta?       @relation("OperadoresPlanta", fields: [plantaId], references: [id])
+  buqueNroIMO     Int?
+  buque           Buque?        @relation("OperadoresBuque", fields: [buqueNroIMO], references: [nroIMO])
+  usuarioAlertas  UsuarioAlerta[]
+  operacionBuque  Operacion[]   @relation("OperadorBuque")
+  operacionLancha Operacion[]   @relation("OperadorLancha")
+  operacionPlanta Operacion[]   @relation("OperadorPlanta")
+}
+
+model Planta {
+  id         Int         @id @default(autoincrement())
+  nombre     String
+  ubicacion  String?
+  operadores Usuario[]   @relation("OperadoresPlanta")
+  operaciones Operacion[]
+  sensores   Sensor[]    @relation("SensoresPlanta")
+}
+
+model Buque {
+  id           Int         @id @default(autoincrement())
+  nroIMO       Int         @unique
+  nombre       String
+  capacidadMax Float
+  capacidadActual Float
+  operadores   Usuario[]   @relation("OperadoresBuque")
+  operaciones  Operacion[]
+  sensores     Sensor[]    @relation("SensoresBuque")
+}
+
+model Monoboya {
+  id       Int              @id @default(autoincrement())
+  nombre   String?
+  estado   EstadoMonoboya   @default(DISPONIBLE)
+  sensores Sensor[]         @relation("SensoresMonoboya")
+  operaciones Operacion[]
+}
+
+model Sensor {
+  id          Int        @id @default(autoincrement())
+  tipo        TipoSensor
+  unidad      String
+  // Un sensor pertenece a exactamente una de estas tres entidades.
+  // Las tres FKs son opcionales; la lógica de negocio garantiza que
+  // solo una tenga valor en cada fila.
+  monoboyaId  Int?
+  monoboya    Monoboya?  @relation("SensoresMonoboya", fields: [monoboyaId], references: [id])
+  buqueNroIMO Int?
+  buque       Buque?     @relation("SensoresBuque", fields: [buqueNroIMO], references: [nroIMO])
+  plantaId    Int?
+  planta      Planta?    @relation("SensoresPlanta", fields: [plantaId], references: [id])
+  mediciones  Medicion[]
+}
+
+model Operacion {
+  id                Int              @id @default(autoincrement())
+  estado            EstadoOperacion  @default(PLANIFICADA)
+  tipo              String?          // campo libre heredado del Java original
+  buqueNroIMO       Int?
+  buque             Buque?           @relation(fields: [buqueNroIMO], references: [nroIMO])
+  plantaId          Int?
+  planta            Planta?          @relation(fields: [plantaId], references: [id])
+  monoboyaId        Int?
+  monoboya          Monoboya?        @relation(fields: [monoboyaId], references: [id])
+  operadorBuqueId   Int?
+  operadorBuque     Usuario?         @relation("OperadorBuque",  fields: [operadorBuqueId],  references: [id])
+  operadorLanchaId  Int?
+  operadorLancha    Usuario?         @relation("OperadorLancha", fields: [operadorLanchaId], references: [id])
+  operadorPlantaId  Int?
+  operadorPlanta    Usuario?         @relation("OperadorPlanta", fields: [operadorPlantaId], references: [id])
+  mediciones        Medicion[]
+  alertas           Alerta[]
+}
+
+model Medicion {
+  id          Int            @id @default(autoincrement())
+  sensorId    Int
+  sensor      Sensor         @relation(fields: [sensorId], references: [id])
+  valor       Float
+  unidad      String
+  tipo        TipoSensor
+  origen      OrigenMedicion
+  operacionId Int
+  operacion   Operacion      @relation(fields: [operacionId], references: [id])
+  timestamp   DateTime       @default(now())
+  alertas     Alerta[]
+}
+
+model Alerta {
+  id              Int           @id @default(autoincrement())
+  tipoAlerta      TipoAlerta
+  mensaje         String
+  doubleMedicion  Float
+  stringMedicion  String
+  timestamp       DateTime      @default(now())
+  operacionId     Int
+  operacion       Operacion     @relation(fields: [operacionId], references: [id])
+  medicionId      Int
+  medicion        Medicion      @relation(fields: [medicionId], references: [id])
+  usuarioAlertas  UsuarioAlerta[]
+}
+
+// Tabla de join: qué usuarios recibieron cada alerta y si la reconocieron.
+// El reconocimiento es per-user (no global), de acuerdo al diseño de dominio.
+model UsuarioAlerta {
+  alertaId    Int
+  alerta      Alerta   @relation(fields: [alertaId],  references: [id])
+  usuarioId   Int
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  reconocida  Boolean  @default(false)
+  reconocidaEn DateTime?
+
+  @@id([alertaId, usuarioId])
+}
